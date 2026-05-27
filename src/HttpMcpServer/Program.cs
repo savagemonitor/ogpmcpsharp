@@ -11,10 +11,21 @@ var openApiPath = System.Environment.GetEnvironmentVariable("OGP_OPENAPI_PATH")
 var cameraBase = System.Environment.GetEnvironmentVariable("OGP_CAMERA_BASE") 
     ?? throw new InvalidOperationException("Environment variable 'OGP_CAMERA_BASE' is required");
 
-builder.Services.AddSingleton<IProtoTransport>(sp => 
+// Register typed HTTP client generated from OpenAPI
+builder.Services.AddSingleton<OpenGoPro.Client.Generated.IOpenGoProHttpClient>(sp =>
+    new OpenGoPro.Client.Generated.OpenGoProHttpClient(openApiPath, new System.Net.Http.HttpClient { BaseAddress = new Uri(cameraBase) }));
+
+// Optionally register proto transport if available (keeps previous abstraction)
+builder.Services.AddSingleton<IProtoTransport>(sp =>
     new OpenApiHttpTransport(openApiPath, new System.Net.Http.HttpClient { BaseAddress = new Uri(cameraBase) }, cameraBase));
-builder.Services.AddSingleton<IOpenGoProClient>(sp => 
-    new OpenGoProClient(sp.GetRequiredService<IProtoTransport>()));
+
+// Register high-level client that prefers proto transport when present and falls back to HTTP client
+builder.Services.AddSingleton<IOpenGoProClient>(sp =>
+{
+    var proto = sp.GetService<IProtoTransport>();
+    var http = sp.GetRequiredService<OpenGoPro.Client.Generated.IOpenGoProHttpClient>();
+    return new OpenGoProClient(proto, http);
+});
 
 builder.Services.AddControllers();
 var app = builder.Build();
