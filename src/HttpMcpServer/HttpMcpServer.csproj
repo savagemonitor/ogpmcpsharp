@@ -7,12 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.24.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OpenGoPro.Client\OpenGoPro.Client.csproj" />
+    <ProjectReference Include="../OpenGoPro.Client/OpenGoPro.Client.csproj" />
   </ItemGroup>
 
 </Project>
