@@ -6,6 +6,7 @@
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.24.0" />
     <PackageReference Include="Grpc.Tools" Version="2.62.0" PrivateAssets="All" />
+    <PackageReference Include="ModelContextProtocol" Version="1.0.0" />
   </ItemGroup>
   <ItemGroup>
     <Protobuf Include="..\..\third_party\opengopro-protos\protobuf\**\*.proto" GrpcServices="Client" />
