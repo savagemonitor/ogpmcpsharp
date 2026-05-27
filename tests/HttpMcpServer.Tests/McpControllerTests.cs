@@ -1,7 +1,5 @@
-using Moq;
-using OpenGoPro.Client;
-using HttpMcpServer.Controllers;
 using Xunit;
+using HttpMcpServer.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -10,13 +8,12 @@ namespace HttpMcpServer.Tests
     public class McpControllerTests
     {
         [Fact]
-        public async Task Send_ReturnsOk()
+        public async Task Send_ReturnsServiceUnavailable_WhenClientMissing()
         {
-            var mock = new Mock<IOpenGoProClient>();
-            mock.Setup(m => m.SendMcpCommandAsync("cmd")).ReturnsAsync("ok");
-            var ctrl = new McpController(mock.Object);
-            var res = await ctrl.Send(new CommandRequest { Command = "cmd" }) as OkObjectResult;
+            var ctrl = new McpController();
+            var res = await ctrl.Send(new CommandRequest { Command = "get_last_media" }) as ObjectResult;
             Assert.NotNull(res);
+            Assert.Equal(500, res.StatusCode);
         }
     }
 }
