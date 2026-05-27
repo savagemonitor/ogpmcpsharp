@@ -12,4 +12,8 @@
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../OpenGoPro.Client/OpenGoPro.Client.csproj" />
+  </ItemGroup>
+
 </Project>
