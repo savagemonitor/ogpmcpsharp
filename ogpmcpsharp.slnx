@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ConsoleMcpServer/ConsoleMcpServer.csproj" />
+    <Project Path="src/HttpMcpServer/HttpMcpServer.csproj" />
+    <Project Path="src/OpenGoPro.Client/OpenGoPro.Client.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ConsoleMcpServer.Tests/ConsoleMcpServer.Tests.csproj" />
+    <Project Path="tests/HttpMcpServer.Tests/HttpMcpServer.Tests.csproj" />
+    <Project Path="tests/OpenGoPro.Client.Tests/OpenGoPro.Client.Tests.csproj" />
+  </Folder>
+</Solution>
