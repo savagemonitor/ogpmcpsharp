@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}\\ogpmcpsharp.slnx"],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "test:all",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["test", "${workspaceFolder}\\ogpmcpsharp.slnx"],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run:http",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["run", "--project", "${workspaceFolder}\\src\\HttpMcpServer"],
+      "problemMatcher": []
+    },
+    {
+      "label": "run:console",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["run", "--project", "${workspaceFolder}\\src\\ConsoleMcpServer"],
+      "problemMatcher": []
+    }
+  ]
+}

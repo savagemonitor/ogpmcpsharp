@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET Launch (HttpMcpServer)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}\\src\\HttpMcpServer\\bin\\Debug\\net10.0\\HttpMcpServer.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}\\src\\HttpMcpServer",
+      "console": "integratedTerminal",
+      "env": {
+        "OGP_OPENAPI_PATH": "C:\\Users\\savag\\Downloads\\openapi.json",
+        "OGP_CAMERA_BASE": "http://127.0.0.1/"
+      }
+    },
+    {
+      "name": ".NET Launch (ConsoleMcpServer)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}\\src\\ConsoleMcpServer\\bin\\Debug\\net10.0\\ConsoleMcpServer.dll",
+      "cwd": "${workspaceFolder}\\src\\ConsoleMcpServer",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Attach to Process",
+      "type": "coreclr",
+      "request": "attach"
+    }
+  ]
+}

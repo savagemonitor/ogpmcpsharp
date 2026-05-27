@@ -1,0 +1,7 @@
+{
+  "dotnet.defaultSolution": "${workspaceFolder}\\ogpmcpsharp.slnx",
+  "terminal.integrated.env.windows": {
+    "OGP_OPENAPI_PATH": "C:\\Users\\savag\\Downloads\\openapi.json",
+    "OGP_CAMERA_BASE": "http://127.0.0.1/"
+  }
+}
