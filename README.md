@@ -42,7 +42,7 @@ state and can start or stop recording or capture a photo.
 
 `get_camera_state` returns the camera's settings and status snapshot keyed by
 numeric Open GoPro IDs; `get_setting` and `get_status` read a single ID.
-IDs range from 0 to 255. Values and supported options depend on the camera
+IDs are non-negative 32-bit integers. Values and supported options depend on the camera
 and operating mode; for example, setting IDs 2 and 3 are video resolution and
 frame rate, while status IDs 10 and 70 are encoding and battery percentage.
 `set_setting` changes camera configuration and requires `cameraId`,

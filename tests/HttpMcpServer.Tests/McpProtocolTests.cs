@@ -84,7 +84,7 @@ public sealed class McpProtocolTests
         args["option"] = -1;
         Assert.True((await client.CallToolAsync("set_setting", args)).IsError);
         args["option"] = 9;
-        args["settingId"] = 256;
+        args["settingId"] = -1;
         Assert.True((await client.CallToolAsync("set_setting", args)).IsError);
         args["settingId"] = 2;
         Assert.NotEqual(true, (await client.CallToolAsync("set_setting", args)).IsError);
@@ -120,7 +120,7 @@ public sealed class McpProtocolTests
         await using var camera = fakeBuilder.Build();
         var writes = 0;
         camera.MapGet("/gopro/camera/state", () =>
-            Results.Text("""{"status":{"70":83},"settings":{"2":9}}""", "application/json"));
+            Results.Text("""{"status":{"70":83,"270":3},"settings":{"2":9,"275":1}}""", "application/json"));
         camera.MapGet("/gopro/camera/setting", (HttpRequest request) =>
         {
             if (!request.Query.ContainsKey("option"))
@@ -147,12 +147,17 @@ public sealed class McpProtocolTests
         using var stateJson = JsonDocument.Parse(Assert.Single(state.Content.OfType<TextContentBlock>()).Text);
         Assert.Equal(83, stateJson.RootElement.GetProperty("statuses").GetProperty("70").GetInt32());
         Assert.Equal(9, stateJson.RootElement.GetProperty("settings").GetProperty("2").GetInt32());
+        Assert.Equal(1, stateJson.RootElement.GetProperty("settings").GetProperty("275").GetInt32());
+        Assert.Equal(3, stateJson.RootElement.GetProperty("statuses").GetProperty("270").GetInt32());
         var setting = await client.CallToolAsync("get_setting",
             new Dictionary<string, object?> { ["cameraId"] = "1234", ["settingId"] = 2 });
         Assert.Equal("9", Assert.Single(setting.Content.OfType<TextContentBlock>()).Text);
         var status = await client.CallToolAsync("get_status",
             new Dictionary<string, object?> { ["cameraId"] = "1234", ["statusId"] = 70 });
         Assert.Equal("83", Assert.Single(status.Content.OfType<TextContentBlock>()).Text);
+        var extendedStatus = await client.CallToolAsync("get_status",
+            new Dictionary<string, object?> { ["cameraId"] = "1234", ["statusId"] = 270 });
+        Assert.Equal("3", Assert.Single(extendedStatus.Content.OfType<TextContentBlock>()).Text);
         var missingStatus = await client.CallToolAsync("get_status",
             new Dictionary<string, object?> { ["cameraId"] = "1234", ["statusId"] = 71 });
         Assert.True(missingStatus.IsError);

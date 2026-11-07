@@ -71,7 +71,7 @@ public class OpenGoProClientTests
         await Assert.ThrowsAsync<ArgumentException>(() =>
             client.SendMcpCommandAsync("""{"name":"set_setting","cameraId":"1234","settingId":2,"option":9}"""));
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            client.SendMcpCommandAsync("""{"name":"set_setting","cameraId":"1234","settingId":256,"option":9,"confirm":true}"""));
+            client.SendMcpCommandAsync("""{"name":"set_setting","cameraId":"1234","settingId":-1,"option":9,"confirm":true}"""));
         Assert.Equal("""{"success":true}""", await client.SendMcpCommandAsync(
             """{"name":"set_setting","cameraId":"1234","settingId":2,"option":9,"confirm":true}"""));
         sdk.VerifyAll();

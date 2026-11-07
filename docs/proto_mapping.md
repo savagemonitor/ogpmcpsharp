@@ -24,7 +24,7 @@ one JSON command per line:
 | `list_media` | `GoPro.Commands.GetMediaListAsync` | Implemented; returns the parsed GPSharp media list. Requires a discovered camera ID. |
 | `shutter_start` / `shutter_stop` | `GoPro.Commands.SetShutterAsync(true/false)` | Implemented; requires a discovered camera ID. |
 | `get_camera_state` | `GoPro.Statuses.GetCameraStateAsync` | Reads a snapshot of settings and statuses keyed by numeric IDs. |
-| `get_setting` / `get_status` | `GetSetting(id).GetValueAsync<JsonElement>` / `GetStatus(id).GetValueAsync<JsonElement>` | Reads a setting or status ID from 0 to 255; status uses a fresh snapshot. |
+| `get_setting` / `get_status` | `GetSetting(id).GetValueAsync<JsonElement>` / `GetStatus(id).GetValueAsync<JsonElement>` | Reads a non-negative 32-bit setting or status ID; status uses a fresh snapshot. |
 | `set_setting` | `GetSetting(id).SetValueAsync(option)` | Changes configuration; non-negative integer option and explicit user confirmation required. Camera determines which values are supported. |
 | `set_camera_name` | `RequestSetCameraName` protobuf exists in GPSharp | Unsupported: no GPSharp operation/transport is implemented for it. |
 | `get_last_media` | `RequestGetLastCapturedMedia` protobuf exists in GPSharp | Unsupported: message availability is not an operation or transport. |

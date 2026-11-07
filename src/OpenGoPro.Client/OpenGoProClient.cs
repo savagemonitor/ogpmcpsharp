@@ -83,7 +83,7 @@ public sealed class OpenGoProClient : IOpenGoProClient
     }
 
     private static int RequireId(int? id) =>
-        id is >= 0 and <= 255 ? id.Value : throw new ArgumentException("An ID between 0 and 255 is required.");
+        id is >= 0 ? id.Value : throw new ArgumentException("A non-negative integer ID is required.");
 
     private sealed record CameraCommand(
         string Name, string? CameraId, int? SettingId, int? StatusId, long? Option, bool? Confirm);

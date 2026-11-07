@@ -64,7 +64,7 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
      Description("Read a camera setting option by Open GoPro numeric setting ID. Available IDs and values depend on the camera.")]
     public async Task<string> GetSetting(
         [Description("Camera ID returned by list_cameras.")] string cameraId,
-        [Description("Open GoPro setting ID from 0 to 255.")] int settingId,
+        [Description("Non-negative Open GoPro numeric setting ID.")] int settingId,
         CancellationToken cancellationToken)
     {
         ValidateCameraId(cameraId);
@@ -77,7 +77,7 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
      Description("Read a status value by Open GoPro numeric status ID from a fresh camera-state snapshot.")]
     public async Task<string> GetStatus(
         [Description("Camera ID returned by list_cameras.")] string cameraId,
-        [Description("Open GoPro status ID from 0 to 255.")] int statusId,
+        [Description("Non-negative Open GoPro numeric status ID.")] int statusId,
         CancellationToken cancellationToken)
     {
         ValidateCameraId(cameraId);
@@ -90,7 +90,7 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
      Description("Change a camera setting. This modifies camera configuration. Ask the user for explicit confirmation of the camera, setting ID, and option before calling; confirm must be true. Supported options depend on the camera.")]
     public async Task<string> SetSetting(
         [Description("Camera ID returned by list_cameras.")] string cameraId,
-        [Description("Open GoPro setting ID from 0 to 255.")] int settingId,
+        [Description("Non-negative Open GoPro numeric setting ID.")] int settingId,
         [Description("Non-negative integer option value supported by the camera.")] long option,
         [Description("True only after the user explicitly confirms this exact setting change.")] bool confirm,
         CancellationToken cancellationToken)
@@ -111,8 +111,8 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
 
     private static void ValidateId(int id, string label)
     {
-        if (id is < 0 or > 255)
-            throw new McpException($"{label} ID must be between 0 and 255.");
+        if (id < 0)
+            throw new McpException($"{label} ID must be non-negative.");
     }
 
     private static void ValidateCameraId(string cameraId)

@@ -126,9 +126,9 @@ public sealed class GpSharpAdapter : IGpSharpAdapter
 
     private static void ValidateId(int id, string name)
     {
-        if (id is < 0 or > 255)
+        if (id < 0)
         {
-            throw new ArgumentOutOfRangeException(name, "IDs must be between 0 and 255.");
+            throw new ArgumentOutOfRangeException(name, "IDs must be non-negative.");
         }
     }
 
