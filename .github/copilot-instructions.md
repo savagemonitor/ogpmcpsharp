@@ -37,3 +37,7 @@ The shared client is in `src\OpenGoPro.Client`; both hosts use its GPSharp adapt
 - `docs\proto_mapping.md`: canonical command names, payloads, and support status.
 
 Supported Phase 1 commands are camera discovery, media listing, and shutter start/stop. Settings/status operations and protobuf-only operations without GPSharp transports must remain explicit errors until implemented by the SDK.
+
+## Security advisories
+
+When a vulnerability or CVE is discovered in a dependency or code, promptly assess applicability and severity and address it with a supported fix or mitigation; if blocked, document the concrete blocker and safe interim mitigation. Do not silently ignore or defer known vulnerabilities. Never expose secrets, credentials, tokens, or sensitive user/device data in logs, tests, issues, or reports.
