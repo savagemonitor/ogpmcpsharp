@@ -58,6 +58,25 @@ public class OpenGoProClientTests
         Assert.Contains("\"media\":[]", result);
     }
 
+    [Fact]
+    public async Task SendMcpCommandAsync_SettingAndStatusCalls_AreValidatedAndDispatched()
+    {
+        var sdk = new Mock<IGpSharpAdapter>(MockBehavior.Strict);
+        sdk.Setup(x => x.GetSettingAsync("1234", 2, default)).ReturnsAsync(JsonSerializer.SerializeToElement(9));
+        sdk.Setup(x => x.GetStatusAsync("1234", 70, default)).ReturnsAsync(JsonSerializer.SerializeToElement(83));
+        sdk.Setup(x => x.SetSettingAsync("1234", 2, 9, default)).Returns(Task.CompletedTask);
+        var client = new OpenGoProClient(sdk.Object);
+        Assert.Equal("9", await client.SendMcpCommandAsync("""{"name":"get_setting","cameraId":"1234","settingId":2}"""));
+        Assert.Equal("83", await client.SendMcpCommandAsync("""{"name":"get_status","cameraId":"1234","statusId":70}"""));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            client.SendMcpCommandAsync("""{"name":"set_setting","cameraId":"1234","settingId":2,"option":9}"""));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            client.SendMcpCommandAsync("""{"name":"set_setting","cameraId":"1234","settingId":256,"option":9,"confirm":true}"""));
+        Assert.Equal("""{"success":true}""", await client.SendMcpCommandAsync(
+            """{"name":"set_setting","cameraId":"1234","settingId":2,"option":9,"confirm":true}"""));
+        sdk.VerifyAll();
+    }
+
     [Theory]
     [InlineData("set_camera_name")]
     [InlineData("get_last_media")]

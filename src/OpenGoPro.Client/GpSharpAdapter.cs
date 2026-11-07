@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using GpSharp.Core;
 using GpSharp.Data;
 using GpSharp.GoPro;
@@ -82,14 +83,64 @@ public sealed class GpSharpAdapter : IGpSharpAdapter
         }
     }
 
-    private async Task<GoPro> GetCameraAsync(string cameraId)
+    public async Task<CameraState> GetCameraStateAsync(string cameraId, CancellationToken cancellationToken = default)
     {
+        var camera = await GetCameraAsync(cameraId, cancellationToken);
+        return RequireValue(await camera.Statuses.GetCameraStateAsync(cancellationToken), "camera state");
+    }
+
+    public async Task<JsonElement> GetSettingAsync(string cameraId, int settingId, CancellationToken cancellationToken = default)
+    {
+        ValidateId(settingId, nameof(settingId));
+        var camera = await GetCameraAsync(cameraId, cancellationToken);
+        return RequireValue(await camera.Settings.GetSetting(settingId).GetValueAsync<JsonElement>(cancellationToken), "setting");
+    }
+
+    public async Task<JsonElement> GetStatusAsync(string cameraId, int statusId, CancellationToken cancellationToken = default)
+    {
+        ValidateId(statusId, nameof(statusId));
+        var camera = await GetCameraAsync(cameraId, cancellationToken);
+        return RequireValue(await camera.Statuses.GetStatus(statusId).GetValueAsync<JsonElement>(cancellationToken), "status");
+    }
+
+    public async Task SetSettingAsync(string cameraId, int settingId, long option, CancellationToken cancellationToken = default)
+    {
+        ValidateId(settingId, nameof(settingId));
+        ArgumentOutOfRangeException.ThrowIfNegative(option);
+        var camera = await GetCameraAsync(cameraId, cancellationToken);
+        var result = await camera.Settings.GetSetting(settingId).SetValueAsync(option, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            throw result.Error ?? new InvalidOperationException("GPSharp failed to update the setting.");
+        }
+    }
+
+    private static T RequireValue<T>(Result<T> result, string operation)
+    {
+        if (!result.IsSuccess)
+        {
+            throw result.Error ?? new InvalidOperationException($"GPSharp failed to read {operation}.");
+        }
+        return result.Value ?? throw new InvalidOperationException($"GPSharp returned no {operation} value.");
+    }
+
+    private static void ValidateId(int id, string name)
+    {
+        if (id is < 0 or > 255)
+        {
+            throw new ArgumentOutOfRangeException(name, "IDs must be between 0 and 255.");
+        }
+    }
+
+    private async Task<GoPro> GetCameraAsync(string cameraId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         if (_cameras.TryGetValue(cameraId, out var camera))
         {
             return camera;
         }
 
-        await _connectLock.WaitAsync();
+        await _connectLock.WaitAsync(cancellationToken);
         try
         {
             if (_cameras.TryGetValue(cameraId, out camera))

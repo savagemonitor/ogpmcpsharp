@@ -39,6 +39,13 @@ public sealed class OpenGoProClient : IOpenGoProClient
                 await _sdk.GetMediaListAsync(RequireCameraId(request.CameraId)), JsonOptions),
             "shutter_start" => await SetShutterAsync(RequireCameraId(request.CameraId), true),
             "shutter_stop" => await SetShutterAsync(RequireCameraId(request.CameraId), false),
+            "get_camera_state" => JsonSerializer.Serialize(
+                await _sdk.GetCameraStateAsync(RequireCameraId(request.CameraId)), JsonOptions),
+            "get_setting" => JsonSerializer.Serialize(
+                await _sdk.GetSettingAsync(RequireCameraId(request.CameraId), RequireId(request.SettingId)), JsonOptions),
+            "get_status" => JsonSerializer.Serialize(
+                await _sdk.GetStatusAsync(RequireCameraId(request.CameraId), RequireId(request.StatusId)), JsonOptions),
+            "set_setting" => await SetSettingAsync(request),
             "set_camera_name" or "get_last_media" or "set_turbo_active" or
                 "get_cohn_status" or "create_cohn_cert" or "clear_cohn_cert" =>
                 throw new NotSupportedException(
@@ -63,5 +70,21 @@ public sealed class OpenGoProClient : IOpenGoProClient
         return cameraId;
     }
 
-    private sealed record CameraCommand(string Name, string? CameraId);
+    private async Task<string> SetSettingAsync(CameraCommand request)
+    {
+        var cameraId = RequireCameraId(request.CameraId);
+        var settingId = RequireId(request.SettingId);
+        if (request.Option is null or < 0)
+            throw new ArgumentException("A non-negative integer option is required.");
+        if (request.Confirm != true)
+            throw new ArgumentException("Explicit confirmation is required to change a setting.");
+        await _sdk.SetSettingAsync(cameraId, settingId, request.Option.Value);
+        return JsonSerializer.Serialize(new { success = true }, JsonOptions);
+    }
+
+    private static int RequireId(int? id) =>
+        id is >= 0 and <= 255 ? id.Value : throw new ArgumentException("An ID between 0 and 255 is required.");
+
+    private sealed record CameraCommand(
+        string Name, string? CameraId, int? SettingId, int? StatusId, long? Option, bool? Confirm);
 }

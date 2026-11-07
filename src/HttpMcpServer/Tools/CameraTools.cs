@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using GpSharp.Data;
+using GpSharp.GoPro.Settings;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using OpenGoPro.Client;
@@ -48,6 +49,72 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
         return "Shutter stop command completed.";
     }
 
+    [McpServerTool(Name = "get_camera_state", ReadOnly = true, Destructive = false, Idempotent = true),
+     Description("Read a snapshot of all settings and status values reported by a previously discovered camera, keyed by numeric Open GoPro ID.")]
+    public async Task<string> GetCameraState(
+        [Description("Camera ID returned by list_cameras.")] string cameraId,
+        CancellationToken cancellationToken)
+    {
+        ValidateCameraId(cameraId);
+        return JsonSerializer.Serialize(await ExecuteAsync(
+            () => adapter.GetCameraStateAsync(cameraId, cancellationToken), "Camera state read"), JsonOptions);
+    }
+
+    [McpServerTool(Name = "get_setting", ReadOnly = true, Destructive = false, Idempotent = true),
+     Description("Read a camera setting option by Open GoPro numeric setting ID. Available IDs and values depend on the camera.")]
+    public async Task<string> GetSetting(
+        [Description("Camera ID returned by list_cameras.")] string cameraId,
+        [Description("Open GoPro setting ID from 0 to 255.")] int settingId,
+        CancellationToken cancellationToken)
+    {
+        ValidateCameraId(cameraId);
+        ValidateId(settingId, "Setting");
+        return JsonSerializer.Serialize(await ExecuteAsync(
+            () => adapter.GetSettingAsync(cameraId, settingId, cancellationToken), "Setting read"), JsonOptions);
+    }
+
+    [McpServerTool(Name = "get_status", ReadOnly = true, Destructive = false, Idempotent = true),
+     Description("Read a status value by Open GoPro numeric status ID from a fresh camera-state snapshot.")]
+    public async Task<string> GetStatus(
+        [Description("Camera ID returned by list_cameras.")] string cameraId,
+        [Description("Open GoPro status ID from 0 to 255.")] int statusId,
+        CancellationToken cancellationToken)
+    {
+        ValidateCameraId(cameraId);
+        ValidateId(statusId, "Status");
+        return JsonSerializer.Serialize(await ExecuteAsync(
+            () => adapter.GetStatusAsync(cameraId, statusId, cancellationToken), "Status read"), JsonOptions);
+    }
+
+    [McpServerTool(Name = "set_setting", ReadOnly = false, Destructive = true, Idempotent = false),
+     Description("Change a camera setting. This modifies camera configuration. Ask the user for explicit confirmation of the camera, setting ID, and option before calling; confirm must be true. Supported options depend on the camera.")]
+    public async Task<string> SetSetting(
+        [Description("Camera ID returned by list_cameras.")] string cameraId,
+        [Description("Open GoPro setting ID from 0 to 255.")] int settingId,
+        [Description("Non-negative integer option value supported by the camera.")] long option,
+        [Description("True only after the user explicitly confirms this exact setting change.")] bool confirm,
+        CancellationToken cancellationToken)
+    {
+        ValidateCameraId(cameraId);
+        ValidateId(settingId, "Setting");
+        if (option < 0)
+            throw new McpException("Setting option must be a non-negative integer.");
+        if (!confirm)
+            throw new McpException("Explicit user confirmation is required before changing a setting.");
+        await ExecuteAsync(async () =>
+        {
+            await adapter.SetSettingAsync(cameraId, settingId, option, cancellationToken);
+            return true;
+        }, "Setting update");
+        return "Setting update command completed.";
+    }
+
+    private static void ValidateId(int id, string label)
+    {
+        if (id is < 0 or > 255)
+            throw new McpException($"{label} ID must be between 0 and 255.");
+    }
+
     private static void ValidateCameraId(string cameraId)
     {
         if (string.IsNullOrWhiteSpace(cameraId))
@@ -65,6 +132,15 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
         catch (OperationCanceledException)
         {
             throw;
+        }
+        catch (SettingRejectedException error)
+        {
+            var options = JsonSerializer.Serialize(error.SupportedOptions, JsonOptions);
+            throw new McpException($"Camera rejected setting {error.SettingId}, option {error.OptionId} (error {error.ErrorCode}). Supported options: {options}");
+        }
+        catch (KeyNotFoundException)
+        {
+            throw new McpException($"{operation} failed: the camera did not report the requested ID.");
         }
         catch (Exception error)
         {
