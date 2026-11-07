@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json;
+using System.Runtime.CompilerServices;
+using GpSharp.Core;
 using GpSharp.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -119,6 +121,51 @@ public sealed class McpProtocolTests
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("2025-11-25", body);
         Assert.Contains("\"id\":1", body);
+    }
+
+    [Fact]
+    public async Task RepeatedDiscoveryCallsUseTheSdkDiscoveryService()
+    {
+        var discovery = new SnapshotDiscovery();
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IDiscoveryService>();
+                services.AddSingleton<IDiscoveryService>(discovery);
+            }));
+        using var http = factory.CreateClient();
+        await using var client = await ConnectAsync(http);
+
+        foreach (var _ in Enumerable.Range(0, 2))
+        {
+            var result = await client.CallToolAsync("list_cameras");
+            Assert.NotEqual(true, result.IsError);
+            using var cameras = JsonDocument.Parse(Assert.Single(result.Content.OfType<TextContentBlock>()).Text);
+            Assert.Equal("1234", Assert.Single(cameras.RootElement.EnumerateArray()).GetProperty("id").GetString());
+        }
+
+        discovery.Available = false;
+        var removed = await client.CallToolAsync("list_cameras");
+        Assert.NotEqual(true, removed.IsError);
+        using var remaining = JsonDocument.Parse(Assert.Single(removed.Content.OfType<TextContentBlock>()).Text);
+        Assert.Equal(0, remaining.RootElement.GetArrayLength());
+    }
+
+    private sealed class SnapshotDiscovery : IDiscoveryService
+    {
+        public bool Available { get; set; } = true;
+
+        public async IAsyncEnumerable<DiscoveredDevice> DiscoverAsync(
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Available)
+            {
+                yield return new DiscoveredDevice(
+                    new GoProId("1234"), "Test camera", "192.0.2.1", 80, "Unknown", "Unknown");
+            }
+        }
     }
 
     private static WebApplicationFactory<Program> CreateFactory(IGpSharpAdapter adapter) =>
