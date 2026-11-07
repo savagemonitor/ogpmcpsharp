@@ -50,14 +50,14 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
     }
 
     [McpServerTool(Name = "get_camera_state", ReadOnly = true, Destructive = false, Idempotent = true),
-     Description("Read a snapshot of all settings and status values reported by a previously discovered camera, keyed by numeric Open GoPro ID.")]
+     Description("Read a camera snapshot keyed by numeric Open GoPro ID. Only catalogued settings and statuses are included; documented Boolean statuses are decoded.")]
     public async Task<string> GetCameraState(
         [Description("Camera ID returned by list_cameras.")] string cameraId,
         CancellationToken cancellationToken)
     {
         ValidateCameraId(cameraId);
         return JsonSerializer.Serialize(await ExecuteAsync(
-            () => adapter.GetCameraStateAsync(cameraId, cancellationToken), "Camera state read"), JsonOptions);
+            async () => CameraStatePresentation.FromState(await adapter.GetCameraStateAsync(cameraId, cancellationToken)), "Camera state read"), JsonOptions);
     }
 
     [McpServerTool(Name = "get_setting", ReadOnly = true, Destructive = false, Idempotent = true),
@@ -74,7 +74,7 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
     }
 
     [McpServerTool(Name = "get_status", ReadOnly = true, Destructive = false, Idempotent = true),
-     Description("Read a status value by Open GoPro numeric status ID from a fresh camera-state snapshot.")]
+     Description("Read a status value by Open GoPro numeric status ID from a fresh camera-state snapshot. Documented Boolean statuses are decoded.")]
     public async Task<string> GetStatus(
         [Description("Camera ID returned by list_cameras.")] string cameraId,
         [Description("Non-negative Open GoPro numeric status ID.")] int statusId,
@@ -83,7 +83,7 @@ public sealed class CameraTools(IGpSharpAdapter adapter, ILogger<CameraTools> lo
         ValidateCameraId(cameraId);
         ValidateId(statusId, "Status");
         return JsonSerializer.Serialize(await ExecuteAsync(
-            () => adapter.GetStatusAsync(cameraId, statusId, cancellationToken), "Status read"), JsonOptions);
+            async () => CameraStatePresentation.StatusValue(statusId, await adapter.GetStatusAsync(cameraId, statusId, cancellationToken)), "Status read"), JsonOptions);
     }
 
     [McpServerTool(Name = "set_setting", ReadOnly = false, Destructive = true, Idempotent = false),

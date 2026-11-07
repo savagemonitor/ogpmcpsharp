@@ -77,6 +77,22 @@ public class OpenGoProClientTests
         sdk.VerifyAll();
     }
 
+    [Fact]
+    public async Task SendMcpCommandAsync_StatusUsesSdkBooleanDecoder()
+    {
+        var sdk = new Mock<IGpSharpAdapter>(MockBehavior.Strict);
+        sdk.Setup(x => x.GetStatusAsync("1234", 1, default)).ReturnsAsync(JsonSerializer.SerializeToElement(1));
+        sdk.Setup(x => x.GetStatusAsync("1234", 6, default)).ReturnsAsync(JsonSerializer.SerializeToElement(0));
+        sdk.Setup(x => x.GetStatusAsync("1234", 8, default)).ReturnsAsync(JsonSerializer.SerializeToElement(2));
+        var client = new OpenGoProClient(sdk.Object);
+
+        Assert.Equal("true", await client.SendMcpCommandAsync("""{"name":"get_status","cameraId":"1234","statusId":1}"""));
+        Assert.Equal("false", await client.SendMcpCommandAsync("""{"name":"get_status","cameraId":"1234","statusId":6}"""));
+        await Assert.ThrowsAsync<FormatException>(() =>
+            client.SendMcpCommandAsync("""{"name":"get_status","cameraId":"1234","statusId":8}"""));
+        sdk.VerifyAll();
+    }
+
     [Theory]
     [InlineData("set_camera_name")]
     [InlineData("get_last_media")]

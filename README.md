@@ -40,8 +40,12 @@ Configuration syntax varies by client. The server exposes `list_cameras`,
 pass its camera ID as `cameraId` to the other tools. Shutter tools change camera
 state and can start or stop recording or capture a photo.
 
-`get_camera_state` returns the camera's settings and status snapshot keyed by
-numeric Open GoPro IDs; `get_setting` and `get_status` read a single ID.
+`get_camera_state` returns the camera's catalogued settings and statuses keyed by
+numeric Open GoPro IDs; uncatalogued IDs are omitted. `get_setting` and
+`get_status` read a single ID, including an explicitly requested uncatalogued ID.
+Documented Boolean statuses are returned as JSON `true` or `false` using GPSharp's
+decoder; invalid Boolean values produce an error. Other values remain raw JSON.
+The GPSharp camera-state API itself retains all raw values.
 IDs are non-negative 32-bit integers. Values and supported options depend on the camera
 and operating mode; for example, setting IDs 2 and 3 are video resolution and
 frame rate, while status IDs 10 and 70 are encoding and battery percentage.

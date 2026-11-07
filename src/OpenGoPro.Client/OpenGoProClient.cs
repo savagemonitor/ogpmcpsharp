@@ -40,11 +40,10 @@ public sealed class OpenGoProClient : IOpenGoProClient
             "shutter_start" => await SetShutterAsync(RequireCameraId(request.CameraId), true),
             "shutter_stop" => await SetShutterAsync(RequireCameraId(request.CameraId), false),
             "get_camera_state" => JsonSerializer.Serialize(
-                await _sdk.GetCameraStateAsync(RequireCameraId(request.CameraId)), JsonOptions),
+                CameraStatePresentation.FromState(await _sdk.GetCameraStateAsync(RequireCameraId(request.CameraId))), JsonOptions),
             "get_setting" => JsonSerializer.Serialize(
                 await _sdk.GetSettingAsync(RequireCameraId(request.CameraId), RequireId(request.SettingId)), JsonOptions),
-            "get_status" => JsonSerializer.Serialize(
-                await _sdk.GetStatusAsync(RequireCameraId(request.CameraId), RequireId(request.StatusId)), JsonOptions),
+            "get_status" => await GetStatusAsync(request),
             "set_setting" => await SetSettingAsync(request),
             "set_camera_name" or "get_last_media" or "set_turbo_active" or
                 "get_cohn_status" or "create_cohn_cert" or "clear_cohn_cert" =>
@@ -58,6 +57,13 @@ public sealed class OpenGoProClient : IOpenGoProClient
     {
         await _sdk.SetShutterAsync(cameraId, on);
         return JsonSerializer.Serialize(new { success = true }, JsonOptions);
+    }
+
+    private async Task<string> GetStatusAsync(CameraCommand request)
+    {
+        var statusId = RequireId(request.StatusId);
+        var value = await _sdk.GetStatusAsync(RequireCameraId(request.CameraId), statusId);
+        return JsonSerializer.Serialize(CameraStatePresentation.StatusValue(statusId, value), JsonOptions);
     }
 
     private static string RequireCameraId(string? cameraId)

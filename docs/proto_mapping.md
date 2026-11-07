@@ -23,8 +23,8 @@ one JSON command per line:
 | `list_cameras` | `OgpSdk.DiscoverAsync` | Implemented; returns camera ID/name/model/address/port and discovery connection/link evidence. |
 | `list_media` | `GoPro.Commands.GetMediaListAsync` | Implemented; returns the parsed GPSharp media list. Requires a discovered camera ID. |
 | `shutter_start` / `shutter_stop` | `GoPro.Commands.SetShutterAsync(true/false)` | Implemented; requires a discovered camera ID. |
-| `get_camera_state` | `GoPro.Statuses.GetCameraStateAsync` | Reads a snapshot of settings and statuses keyed by numeric IDs. |
-| `get_setting` / `get_status` | `GetSetting(id).GetValueAsync<JsonElement>` / `GetStatus(id).GetValueAsync<JsonElement>` | Reads a non-negative 32-bit setting or status ID; status uses a fresh snapshot. |
+| `get_camera_state` | `GoPro.Statuses.GetCameraStateAsync`, `OpenGoProProtocolCatalog` | Reads a snapshot keyed by numeric IDs, omitting uncatalogued entries and decoding documented Boolean statuses. |
+| `get_setting` / `get_status` | `GetSetting(id).GetValueAsync<JsonElement>` / `GetStatus(id).GetValueAsync<JsonElement>`, `OpenGoProProtocolCatalog` | Reads an explicitly requested non-negative 32-bit ID, including uncatalogued IDs; status uses a fresh snapshot and documented Boolean values are decoded. |
 | `set_setting` | `GetSetting(id).SetValueAsync(option)` | Changes configuration; non-negative integer option and explicit user confirmation required. Camera determines which values are supported. |
 | `set_camera_name` | `RequestSetCameraName` protobuf exists in GPSharp | Unsupported: no GPSharp operation/transport is implemented for it. |
 | `get_last_media` | `RequestGetLastCapturedMedia` protobuf exists in GPSharp | Unsupported: message availability is not an operation or transport. |
@@ -32,6 +32,11 @@ one JSON command per line:
 | `get_cohn_status`, `create_cohn_cert`, `clear_cohn_cert` | COHN protobuf messages exist in GPSharp | Unsupported: no GPSharp operation/transport is implemented. |
 
 GPSharp protobufs are serialization types only; they do not define a gRPC service or send commands to the camera. Unsupported tools are not registered by the HTTP server; unknown MCP tool calls and unsupported console commands return errors, not success-shaped placeholders. The former custom HTTP endpoint `/mcp/send` has been removed.
+
+The shared presentation applies the SDK metadata decoder to documented Boolean
+statuses and returns JSON `true` or `false`; an invalid Boolean value is an error.
+Other values remain raw JSON. Filtering changes the HTTP and console snapshot
+output only: GPSharp's underlying `CameraState` retains all IDs and raw values.
 
 The HTTP server uses stateless MCP transport; no session ID or per-client
 discovery cache is provided. Discovery is shared by the process and accepts

@@ -120,7 +120,7 @@ public sealed class McpProtocolTests
         await using var camera = fakeBuilder.Build();
         var writes = 0;
         camera.MapGet("/gopro/camera/state", () =>
-            Results.Text("""{"status":{"70":83,"270":3},"settings":{"2":9,"275":1}}""", "application/json"));
+            Results.Text("""{"status":{"1":1,"6":0,"8":2,"70":83,"270":3},"settings":{"2":9,"275":1}}""", "application/json"));
         camera.MapGet("/gopro/camera/setting", (HttpRequest request) =>
         {
             if (!request.Query.ContainsKey("option"))
@@ -143,12 +143,17 @@ public sealed class McpProtocolTests
         using var http = factory.CreateClient();
         await using var client = await ConnectAsync(http);
         Assert.NotEqual(true, (await client.CallToolAsync("list_cameras")).IsError);
-        var state = await client.CallToolAsync("get_camera_state", new Dictionary<string, object?> { ["cameraId"] = "1234" });
-        using var stateJson = JsonDocument.Parse(Assert.Single(state.Content.OfType<TextContentBlock>()).Text);
-        Assert.Equal(83, stateJson.RootElement.GetProperty("statuses").GetProperty("70").GetInt32());
-        Assert.Equal(9, stateJson.RootElement.GetProperty("settings").GetProperty("2").GetInt32());
-        Assert.Equal(1, stateJson.RootElement.GetProperty("settings").GetProperty("275").GetInt32());
-        Assert.Equal(3, stateJson.RootElement.GetProperty("statuses").GetProperty("270").GetInt32());
+        var invalidState = await client.CallToolAsync("get_camera_state", new Dictionary<string, object?> { ["cameraId"] = "1234" });
+        Assert.True(invalidState.IsError);
+        var invalidStatus = await client.CallToolAsync("get_status",
+            new Dictionary<string, object?> { ["cameraId"] = "1234", ["statusId"] = 8 });
+        Assert.True(invalidStatus.IsError);
+        var state = await client.CallToolAsync("get_status",
+            new Dictionary<string, object?> { ["cameraId"] = "1234", ["statusId"] = 1 });
+        Assert.Equal("true", Assert.Single(state.Content.OfType<TextContentBlock>()).Text);
+        var falseStatus = await client.CallToolAsync("get_status",
+            new Dictionary<string, object?> { ["cameraId"] = "1234", ["statusId"] = 6 });
+        Assert.Equal("false", Assert.Single(falseStatus.Content.OfType<TextContentBlock>()).Text);
         var setting = await client.CallToolAsync("get_setting",
             new Dictionary<string, object?> { ["cameraId"] = "1234", ["settingId"] = 2 });
         Assert.Equal("9", Assert.Single(setting.Content.OfType<TextContentBlock>()).Text);
@@ -169,6 +174,37 @@ public sealed class McpProtocolTests
         args["option"] = 9;
         Assert.NotEqual(true, (await client.CallToolAsync("set_setting", args)).IsError);
         Assert.Equal(2, writes);
+    }
+
+    [Fact]
+    public async Task CameraStateFiltersUncataloguedEntriesAndDecodesBooleans()
+    {
+        var fakeBuilder = WebApplication.CreateSlimBuilder();
+        fakeBuilder.WebHost.UseUrls("http://127.0.0.1:0");
+        await using var camera = fakeBuilder.Build();
+        camera.MapGet("/gopro/camera/state", () =>
+            Results.Text("""{"status":{"1":1,"6":0,"70":83,"270":3},"settings":{"2":9,"275":1}}""", "application/json"));
+        await camera.StartAsync();
+        var address = camera.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        var discovery = new SnapshotDiscovery { Port = new Uri(address).Port, Address = "127.0.0.1" };
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IDiscoveryService>();
+                services.AddSingleton<IDiscoveryService>(discovery);
+            }));
+        using var http = factory.CreateClient();
+        await using var client = await ConnectAsync(http);
+        Assert.NotEqual(true, (await client.CallToolAsync("list_cameras")).IsError);
+        var state = await client.CallToolAsync("get_camera_state", new Dictionary<string, object?> { ["cameraId"] = "1234" });
+        Assert.NotEqual(true, state.IsError);
+        using var stateJson = JsonDocument.Parse(Assert.Single(state.Content.OfType<TextContentBlock>()).Text);
+        Assert.Equal(83, stateJson.RootElement.GetProperty("statuses").GetProperty("70").GetInt32());
+        Assert.True(stateJson.RootElement.GetProperty("statuses").GetProperty("1").GetBoolean());
+        Assert.False(stateJson.RootElement.GetProperty("statuses").GetProperty("6").GetBoolean());
+        Assert.Equal(9, stateJson.RootElement.GetProperty("settings").GetProperty("2").GetInt32());
+        Assert.False(stateJson.RootElement.GetProperty("settings").TryGetProperty("275", out _));
+        Assert.False(stateJson.RootElement.GetProperty("statuses").TryGetProperty("270", out _));
     }
 
     [Fact]
