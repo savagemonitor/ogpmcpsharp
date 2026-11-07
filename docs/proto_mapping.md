@@ -1,106 +1,66 @@
-MCP → OpenGoPro proto mapping
+# MCP command mapping and GPSharp support
 
-Overview
-This file maps high-level MCP command names (used by the MCP server) to OpenGoPro protobuf request messages found in third_party/opengopro-protos/protobuf.
+The HTTP server exposes MCP tools over Streamable HTTP at `/mcp`, backed by the
+shared `IGpSharpAdapter`. MCP clients pass tool arguments as JSON objects.
+The console host uses the shared `OpenGoProClient` JSON dispatcher and accepts
+one JSON command per line:
 
-Mapping (initial sensible defaults)
+```json
+{"name":"list_cameras"}
+{"name":"list_media","cameraId":"1234"}
+{"name":"get_camera_state","cameraId":"1234"}
+{"name":"get_setting","cameraId":"1234","settingId":2}
+{"name":"get_status","cameraId":"1234","statusId":70}
+{"name":"set_setting","cameraId":"1234","settingId":2,"option":9,"confirm":true}
+{"name":"shutter_start","cameraId":"1234"}
+{"name":"shutter_stop","cameraId":"1234"}
+```
 
-- list_cameras
-  - Proto: (no dedicated proto) — handled by discovery/transport layer; returns list of available cameras (out of scope for protos)
+`cameraId` is the `DiscoveredDevice.Id.PartialSerial` returned by `list_cameras`. Discovery runs for up to five seconds. GPSharp may report multiple network endpoints for the same camera; the adapter returns one endpoint per camera ID. Run discovery before a camera-specific command. Camera operations connect lazily and use GPSharp's HTTP transport.
 
-- set_camera_name
-  - Proto: RequestSetCameraName (camera_control.proto)
-  - Description: Set the camera's display name; maps MCP payload "name" → RequestSetCameraName.name
+| MCP command | GPSharp API | Status |
+|---|---|---|
+| `list_cameras` | `OgpSdk.DiscoverAsync` | Implemented; returns camera ID/name/model/address/port and discovery connection/link evidence. |
+| `list_media` | `GoPro.Commands.GetMediaListAsync` | Implemented; returns the parsed GPSharp media list. Requires a discovered camera ID. |
+| `shutter_start` / `shutter_stop` | `GoPro.Commands.SetShutterAsync(true/false)` | Implemented; requires a discovered camera ID. |
+| `get_camera_state` | `GoPro.Statuses.GetCameraStateAsync`, `OpenGoProProtocolCatalog` | Reads a snapshot keyed by numeric IDs, omitting uncatalogued entries and decoding documented Boolean statuses. |
+| `get_setting` / `get_status` | `GetSetting(id).GetValueAsync<JsonElement>` / `GetStatus(id).GetValueAsync<JsonElement>`, `OpenGoProProtocolCatalog` | Reads an explicitly requested non-negative 32-bit ID, including uncatalogued IDs; status uses a fresh snapshot and documented Boolean values are decoded. |
+| `set_setting` | `GetSetting(id).SetValueAsync(option)` | Changes configuration; non-negative integer option and explicit user confirmation required. Camera determines which values are supported. |
+| `set_camera_name` | `RequestSetCameraName` protobuf exists in GPSharp | Unsupported: no GPSharp operation/transport is implemented for it. |
+| `get_last_media` | `RequestGetLastCapturedMedia` protobuf exists in GPSharp | Unsupported: message availability is not an operation or transport. |
+| `set_turbo_active` | `RequestSetTurboActive` protobuf exists in GPSharp | Unsupported: no GPSharp operation/transport is implemented. |
+| `get_cohn_status`, `create_cohn_cert`, `clear_cohn_cert` | COHN protobuf messages exist in GPSharp | Unsupported: no GPSharp operation/transport is implemented. |
 
-- get_last_media
-  - Proto: RequestGetLastCapturedMedia (media.proto)
-  - Description: Retrieve metadata/path of last captured media file.
+GPSharp protobufs are serialization types only; they do not define a gRPC service or send commands to the camera. Unsupported tools are not registered by the HTTP server; unknown MCP tool calls and unsupported console commands return errors, not success-shaped placeholders. The former custom HTTP endpoint `/mcp/send` has been removed.
 
-- set_turbo_active
-  - Proto: RequestSetTurboActive (turbo_transfer.proto)
-  - Description: Enable/disable turbo transfer. MCP payload: { "active": true }
+The shared presentation applies the SDK metadata decoder to documented Boolean
+statuses and returns JSON `true` or `false`; an invalid Boolean value is an error.
+Other values remain raw JSON. Filtering changes the HTTP and console snapshot
+output only: GPSharp's underlying `CameraState` retains all IDs and raw values.
 
-- get_cohn_status
-  - Proto: RequestGetCOHNStatus (cohn.proto)
-  - Description: Request Camera On the Home Network status; optional register flag: MCP payload { "register": true }
+The HTTP server uses stateless MCP transport; no session ID or per-client
+discovery cache is provided. Discovery is shared by the process and accepts
+cancellation. GPSharp's media and shutter operations cannot currently be
+cancelled once started, including when a client disconnects. The shutter tools
+change camera state and may capture media or start/stop recording.
+Settings and status operations accept cancellation, but cancellation of a
+setting write does not prove that the camera did not apply it. Setting and
+status IDs and option values are model-dependent; no capability discovery or
+live update stream is provided. `set_setting` requires `confirm: true` after
+the user confirms the exact change. This flag is not an authorization boundary.
+Media download remains unsupported.
 
-- create_cohn_cert
-  - Proto: RequestCreateCOHNCert (cohn.proto)
-  - Description: Create COHN cert; MCP payload: { "override": true }
+## Dependency and schema provenance
 
-- clear_cohn_cert
-  - Proto: RequestClearCOHNCert (cohn.proto)
-  - Description: Clear COHN cert; no payload.
+The MCP shared client references GPSharp from the pinned `third_party/gpsharp` submodule using a relative project reference. GPSharp contains the OpenGoPro schemas and the `GpSharp.Protos.OpenGoPro` generated types. `third_party/opengopro-protos` is no longer needed by the MCP build. GPSharp's `src/GpSharp/Protos/OpenGoPro/NOTICE.md` records upstream schema provenance and attribution; retain that notice with the SDK.
 
-HTTP endpoint mappings (from provided OpenAPI document)
+Initialize nested submodules after cloning:
 
-- GET /gopro/camera/name
-  - OperationId: GPCAMERA_GET_CAMERA_NAME
-  - Maps to: get_camera_name (returns current display name)
+```powershell
+git submodule update --init --recursive
+dotnet restore
+dotnet build ogpmcpsharp.slnx
+dotnet test ogpmcpsharp.slnx
+```
 
-- PUT /gopro/camera/name
-  - OperationId: GPCAMERA_SET_CAMERA_NAME
-  - Maps to: set_camera_name (alternate HTTP transport)
-
-- GET /gopro/camera/info
-  - OperationId: OGP_CAMERA_INFO
-  - Maps to: camera_info (camera metadata and capabilities)
-
-- GET /gopro/camera/state
-  - OperationId: OGP_GET_STATE
-  - Maps to: get_state (current camera operational state)
-
-- GET /gopro/camera/stream/start
-  - OperationId: OGP_PREVIEW_STREAM_START
-  - Maps to: start_preview_stream
-
-- GET /gopro/camera/stream/stop
-  - OperationId: OGP_PREVIEW_STREAM_STOP
-  - Maps to: stop_preview_stream
-
-- GET /gopro/media/last_captured
-  - OperationId: OGP_GET_LAST_MEDIA
-  - Maps to: get_last_media (HTTP transport)
-
-- GET /gopro/media/list
-  - OperationId: OGP_MEDIA_LIST
-  - Maps to: list_media
-
-- GET /gopro/media/thumbnail
-  - OperationId: OGP_MEDIA_THUMBNAIL
-  - Maps to: media_thumbnail
-
-- GET /gopro/media/telemetry
-  - OperationId: OGP_MEDIA_TELEMETRY
-  - Maps to: media_telemetry
-
-- GET /gopro/media/info
-  - OperationId: OGP_MEDIA_INFO
-  - Maps to: media_info
-
-- GET /gopro/media/last_captured
-  - OperationId: OGP_GET_LAST_MEDIA
-  - Maps to: get_last_media
-
-- POST /gp/gpSoftUpdate
-  - OperationId: GPCAMERA_FIRMWARE_UPDATE_V2
-  - Maps to: firmware_update
-
-- GET /videos/DCIM/{directory}/{filename}
-  - OperationId: OGP_DOWNLOAD_MEDIA
-  - Maps to: download_media (serves media files)
-
-Notes
-- Connection-establishment mappings (connect_ap, connect_ap_new, start_scan, get_scan_results, release_network, pair_finish) were removed from top-level MCP mappings and will be implemented as internal client transport/connection management functions.
-- The HTTP mappings above are additive: the OpenGoProClient will prefer proto-backed transport when available, and fall back to the HTTP endpoints (using the OpenAPI) where appropriate.
-- Next steps: implement an HTTP transport that uses the OpenAPI document (C:\Users\savag\Downloads\openapi.json) to call camera endpoints; implement IProtoTransport for protobuf transport; wire OpenGoProClient to choose transport based on availability.
-
-Notes and next steps
-- The OpenGoPro protos define request/response messages but not gRPC service definitions; the client will need a transport layer (e.g., TCP/HTTP/WebSocket or MCU-specific transport) that serializes protobuf messages and sends them to the camera.
-- Implementation plan:
-  1. Build generated C# types from protos (already wired into OpenGoPro.Client project via Protobuf Include). Verify generated types appear in src/OpenGoPro.Client/obj or bin output after build.
-  2. Implement a transport abstraction IProtoTransport with methods SendRequestAsync<TRequest, TResponse>(TRequest) that serializes the request and receives/parses the response message type.
-  3. Implement OpenGoProClient to map MCP commands to proto requests (using mapping above), call the transport, and return MCP-compatible responses.
-  4. Add unit tests that mock IProtoTransport to assert correct proto message creation and response handling.
-
-If any of these mappings should be changed or you want additional MCP commands mapped, say which ones and preferred names.
+The SDK submodule gitlink pins the exact GPSharp source revision. SDK updates must intentionally change that pin and pass the MCP solution build/tests. When an official package/version is available, the project reference can be replaced with an exact package version.

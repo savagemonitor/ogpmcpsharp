@@ -4,11 +4,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.24.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.62.0" PrivateAssets="All" />
-    <PackageReference Include="ModelContextProtocol" Version="1.0.0" />
+    <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
   </ItemGroup>
   <ItemGroup>
-    <Protobuf Include="..\..\third_party\opengopro-protos\protobuf\**\*.proto" GrpcServices="Client" />
+    <ProjectReference Include="..\..\third_party\gpsharp\src\GpSharp\GpSharp.csproj" />
   </ItemGroup>
 </Project>
