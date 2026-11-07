@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using OpenGoPro.Client;
 
@@ -14,10 +16,33 @@ namespace HttpMcpServer.Controllers
         [HttpPost("send")]
         public async Task<IActionResult> Send([FromBody] CommandRequest req)
         {
-            var res = await _client.SendMcpCommandAsync(req.Command);
-            return Ok(new { result = res });
+            try
+            {
+                var res = await _client.SendMcpCommandAsync(req.Command);
+                return Ok(new { result = res });
+            }
+            catch (ArgumentException error)
+            {
+                return BadRequest(new { error = error.Message });
+            }
+            catch (NotSupportedException error)
+            {
+                return StatusCode(StatusCodes.Status501NotImplemented, new { error = error.Message });
+            }
+            catch (InvalidOperationException error)
+            {
+                return NotFound(new { error = error.Message });
+            }
+            catch (HttpRequestException error)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway, new { error = error.Message });
+            }
+            catch (System.Text.Json.JsonException error)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway, new { error = error.Message });
+            }
         }
     }
 
-    public class CommandRequest { public string Command { get; set; } }
+    public class CommandRequest { public string Command { get; set; } = string.Empty; }
 }
