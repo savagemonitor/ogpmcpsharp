@@ -14,7 +14,7 @@ public class OpenGoProClientTests
     public async Task SendMcpCommandAsync_ListCameras_ReturnsDiscoveredCameraDetails()
     {
         var sdk = new Mock<IGpSharpAdapter>();
-        sdk.Setup(x => x.ListCamerasAsync())
+        sdk.Setup(x => x.ListCamerasAsync(default))
             .ReturnsAsync(new[]
             {
                 new CameraSummary("1234", "GoPro", "HERO", "192.168.1.2", 8080, "Unknown", "Wifi")

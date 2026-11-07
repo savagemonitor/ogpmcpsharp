@@ -34,7 +34,7 @@ public sealed class OpenGoProClient : IOpenGoProClient
 
         return request.Name switch
         {
-            "list_cameras" => JsonSerializer.Serialize(await _sdk.ListCamerasAsync(), JsonOptions),
+            "list_cameras" => JsonSerializer.Serialize(await _sdk.ListCamerasAsync(default), JsonOptions),
             "list_media" => JsonSerializer.Serialize(
                 await _sdk.GetMediaListAsync(RequireCameraId(request.CameraId)), JsonOptions),
             "shutter_start" => await SetShutterAsync(RequireCameraId(request.CameraId), true),

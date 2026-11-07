@@ -24,9 +24,10 @@ public sealed class GpSharpAdapter : IGpSharpAdapter
         _sdk = sdk;
     }
 
-    public async Task<IReadOnlyList<CameraSummary>> ListCamerasAsync()
+    public async Task<IReadOnlyList<CameraSummary>> ListCamerasAsync(CancellationToken cancellationToken = default)
     {
-        using var timeout = new CancellationTokenSource(DiscoveryWindow);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(DiscoveryWindow);
         var discovered = new Dictionary<string, DiscoveredDevice>(StringComparer.OrdinalIgnoreCase);
 
         try
@@ -37,7 +38,7 @@ public sealed class GpSharpAdapter : IGpSharpAdapter
                 discovered.TryAdd(id, device);
             }
         }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
         }
 

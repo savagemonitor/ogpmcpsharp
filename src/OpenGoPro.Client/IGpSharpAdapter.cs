@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using GpSharp.Data;
 
@@ -6,7 +7,7 @@ namespace OpenGoPro.Client;
 
 public interface IGpSharpAdapter
 {
-    Task<IReadOnlyList<CameraSummary>> ListCamerasAsync();
+    Task<IReadOnlyList<CameraSummary>> ListCamerasAsync(CancellationToken cancellationToken = default);
     Task<MediaList> GetMediaListAsync(string cameraId);
     Task SetShutterAsync(string cameraId, bool on);
 }

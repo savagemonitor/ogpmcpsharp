@@ -1,6 +1,9 @@
 # MCP command mapping and GPSharp support
 
-The shared `OpenGoProClient` is the adapter used by both the HTTP and console hosts. Commands are passed as JSON text in the existing `command` field (or as one JSON line in the console):
+The HTTP server exposes MCP tools over Streamable HTTP at `/mcp`, backed by the
+shared `IGpSharpAdapter`. MCP clients pass tool arguments as JSON objects.
+The console host uses the shared `OpenGoProClient` JSON dispatcher and accepts
+one JSON command per line:
 
 ```json
 {"name":"list_cameras"}
@@ -22,7 +25,13 @@ The shared `OpenGoProClient` is the adapter used by both the HTTP and console ho
 | `get_cohn_status`, `create_cohn_cert`, `clear_cohn_cert` | COHN protobuf messages exist in GPSharp | Unsupported: no GPSharp operation/transport is implemented. |
 | Camera setting/status reads | GPSharp Settings/Statuses interfaces | Unsupported in Phase 1; GPSharp throws `NotSupportedException` because BLE support is not implemented. |
 
-GPSharp protobufs are serialization types only; they do not define a gRPC service or send commands to the camera. Unsupported commands are surfaced as errors (HTTP 501, console error output), not success-shaped placeholders.
+GPSharp protobufs are serialization types only; they do not define a gRPC service or send commands to the camera. Unsupported tools are not registered by the HTTP server; unknown MCP tool calls and unsupported console commands return errors, not success-shaped placeholders. The former custom HTTP endpoint `/mcp/send` has been removed.
+
+The HTTP server uses stateless MCP transport; no session ID or per-client
+discovery cache is provided. Discovery is shared by the process and accepts
+cancellation. GPSharp's media and shutter operations cannot currently be
+cancelled once started, including when a client disconnects. The shutter tools
+change camera state and may capture media or start/stop recording.
 
 ## Dependency and schema provenance
 
